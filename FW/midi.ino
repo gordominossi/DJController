@@ -78,7 +78,8 @@ void setupComponents() {
     buttons[i].begin();
   }
 
-  outputShiftRegs.begin(PIN_OUT_REG_DATA, PIN_OUT_REG_LATCH, PIN_OUT_REG_CLOCK, PIN_OUT_REG_PWM);
+  outputShiftRegs.begin(PIN_OUT_REG_DATA, PIN_OUT_REG_LATCH, PIN_OUT_REG_CLOCK,
+                        PIN_OUT_REG_PWM);
   outputShiftRegs.setBrightness(255);
 
   leftVU.onUpdate([](uint16_t n, bool state) {
@@ -115,7 +116,7 @@ const byte ledMap[64] PROGMEM = {
 
 /* LED map
  * 00: B loop in
- * 01: B loop out 
+ * 01: B loop out
  * 02: B beat sync
  * 03: B key sync
  * 04: A key sync
@@ -124,7 +125,7 @@ const byte ledMap[64] PROGMEM = {
  * 07: A loop in
  * 08: B filter
  * 09: B hot cue
- * 10: B beat jump 
+ * 10: B beat jump
  * 11: B beat loop
  * 12: B sampler
  * 13: B phones
@@ -219,7 +220,8 @@ void readDigital() {
   byte button = 0;
   for (byte i = 0; i < N_ENCODERS * 2 + N_BUTTONS; i++) {
     if (encoderIndexes[encoder] == i) {
-      if (encoders[encoder].update(inputShiftRegs.readPin(i), inputShiftRegs.readPin(i + 1))) {
+      if (encoders[encoder].update(inputShiftRegs.readPin(i),
+                                   inputShiftRegs.readPin(i + 1))) {
         bool clockwise = encoders[encoder].clockwise();
         // Bad wiring lead to this encoder rotating the other way around
         if (i == 54) {
@@ -274,7 +276,8 @@ void readAnalog() {
   }
   for (byte i = 0; i < N_LOOSE_POTS; i++) {
     if (pots[N_MUX_POTS + i].update(analogRead(PIN_FREE_ANALOG_READ + i))) {
-      MIDI.sendControlChange(N_MUX_POTS + i, pots[N_MUX_POTS + i].read(), MIDI_CHANNEL);
+      MIDI.sendControlChange(N_MUX_POTS + i, pots[N_MUX_POTS + i].read(),
+                             MIDI_CHANNEL);
     }
   }
 }
