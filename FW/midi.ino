@@ -1,14 +1,27 @@
 #define DEBUG 0
 
+// Hardware specifications
+// TODO: Autodiscover/configuration through the web app
+#define N_MUX_POTS 16
+#define N_LOOSE_POTS 2
+#define N_ENCODERS 3
+#define N_BUTTONS 58
+byte encoderIndexes[N_ENCODERS] = {8, 28, 54};
+#define N_SIMPLE_LEDS 40
+#define RIGHT_VU_REG_NUMBER 3
+#define LEFT_VU_REG_NUMBER 4
+#define N_VU_METERS 2
+#define N_LEDS_PER_METER 8
+#define LEFT_VU 0
+#define RIGHT_VU 1
+
 // RoxLed Modes
 #define ROX_DEFAULT 0
 #define ROX_BLINK 1
 #define ROX_PULSE 2
 #include <RoxFlags.h>
 
-#define N_MUX_POTS 16
 #define N_POT_MUXES ((N_MUX_POTS + 15) / 16)
-#define N_LOOSE_POTS 2
 #define N_POTS (N_MUX_POTS + N_LOOSE_POTS)
 #include <RoxPot.h>
 RoxPot pots[N_POTS];
@@ -24,12 +37,9 @@ Rox74HC4067<N_MUXES> muxes;
 
 #define PIN_FREE_ANALOG_READ A1
 
-#define N_ENCODERS 3
 #include <RoxEncoder.h>
 RoxEncoder encoders[N_ENCODERS];
-byte encoderIndexes[N_ENCODERS] = {8, 28, 54};
 
-#define N_BUTTONS 58
 #include <RoxButton.h>
 RoxButton buttons[N_BUTTONS];
 
@@ -40,13 +50,8 @@ RoxButton buttons[N_BUTTONS];
 #include <Rox74HC165.h>
 Rox74HC165<N_IN_SHIFT_REGS> inputShiftRegs;
 
-#define N_SIMPLE_LEDS 40
 #define N_SIMPLE_LEDS_SHIFT_REGS ((N_SIMPLE_LEDS + 7) / 8)
 
-#define RIGHT_VU_REG_NUMBER 3
-#define LEFT_VU_REG_NUMBER 4
-#define N_VU_METERS 2
-#define N_LEDS_PER_METER 8
 #define N_VUS_SHIFT_REGS ((N_VU_METERS * N_LEDS_PER_METER + 7) / 8)
 #include <RoxLedMeter.h>
 RoxLedMeter<N_LEDS_PER_METER, 0, 0, 127> rightVU;
@@ -78,8 +83,7 @@ void setupComponents() {
     buttons[i].begin();
   }
 
-  outputShiftRegs.begin(PIN_OUT_REG_DATA, PIN_OUT_REG_LATCH, PIN_OUT_REG_CLOCK,
-                        PIN_OUT_REG_PWM);
+  outputShiftRegs.begin(PIN_OUT_REG_DATA, PIN_OUT_REG_LATCH, PIN_OUT_REG_CLOCK, PIN_OUT_REG_PWM);
   outputShiftRegs.setBrightness(255);
 
   leftVU.onUpdate([](uint16_t n, bool state) {
@@ -97,11 +101,10 @@ void setupComponents() {
 #define MIDI_CHANNEL 1
 MIDI_CREATE_DEFAULT_INSTANCE();
 
-#define LEFT_VU 0
-#define RIGHT_VU 1
 
 // clang-format off
 // 255: button does not have an LED
+// TODO: Autodiscover/configuration through the web app
 const byte ledMap[64] PROGMEM = {
     0,  255,    1,  255,  255,  255,    2,    3,
   255,  255,    8,   10,   11,   12,  255,  255,
@@ -220,14 +223,17 @@ void readDigital() {
   byte button = 0;
   for (byte i = 0; i < N_ENCODERS * 2 + N_BUTTONS; i++) {
     if (encoderIndexes[encoder] == i) {
-      if (encoders[encoder].update(inputShiftRegs.readPin(i),
-                                   inputShiftRegs.readPin(i + 1))) {
+      // Pin corresponds to an encoder
+      // Encoder signal pins should be wired in sequence
+      if (encoders[encoder].update(inputShiftRegs.readPin(i), inputShiftRegs.readPin(i + 1))) {
         bool clockwise = encoders[encoder].clockwise();
         // Bad wiring lead to this encoder rotating the other way around
+        // Remove this if your hardware is different
         if (i == 54) {
           clockwise = !clockwise;
         }
         if (DEBUG) {
+          // If DEBUG, change a VU meter's value according to changes in any of the encoders
           outputShiftRegs.writePin(debugLedIndex, 0);
           debugLedIndex = (debugLedIndex + clockwise * 2 + 63) % 64;
           outputShiftRegs.writePin(debugLedIndex, 1);
@@ -249,6 +255,7 @@ void readDigital() {
       i++;
       encoder++;
     } else {
+      // Pin corresponds to a button
       if (buttons[button].update(inputShiftRegs.readPin(i))) {
         if (DEBUG) {
           if (pgm_read_byte_near(&ledMap[i]) == 255) {
@@ -276,8 +283,7 @@ void readAnalog() {
   }
   for (byte i = 0; i < N_LOOSE_POTS; i++) {
     if (pots[N_MUX_POTS + i].update(analogRead(PIN_FREE_ANALOG_READ + i))) {
-      MIDI.sendControlChange(N_MUX_POTS + i, pots[N_MUX_POTS + i].read(),
-                             MIDI_CHANNEL);
+      MIDI.sendControlChange(N_MUX_POTS + i, pots[N_MUX_POTS + i].read(), MIDI_CHANNEL);
     }
   }
 }
